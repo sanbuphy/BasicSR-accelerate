@@ -1,7 +1,7 @@
 import torch
 from collections import Counter
 from os import path as osp
-from torch import distributed as dist
+from accelerate import Accelerator
 from tqdm import tqdm
 
 from basicsr.metrics import calculate_metric
@@ -18,6 +18,7 @@ class VideoRecurrentModel(VideoBaseModel):
         super(VideoRecurrentModel, self).__init__(opt)
         if self.is_train:
             self.fix_flow_iter = opt['train'].get('fix_flow')
+        self.accelerator = Accelerator()
 
     def setup_optimizers(self):
         train_opt = self.opt['train']
@@ -167,8 +168,8 @@ class VideoRecurrentModel(VideoBaseModel):
             if self.opt['dist']:
                 # collect data among GPUs
                 for _, tensor in self.metric_results.items():
-                    dist.reduce(tensor, 0)
-                dist.barrier()
+                    self.accelerator.reduce(tensor)
+                self.accelerator.wait_for_everyone()
 
             if rank == 0:
                 self._log_validation_metric_values(current_iter, dataset_name, tb_logger)

@@ -1,5 +1,6 @@
 import torch
 from collections import OrderedDict
+from accelerate import Accelerator
 
 from basicsr.archs import build_network
 from basicsr.losses import build_loss
@@ -10,6 +11,10 @@ from .video_recurrent_model import VideoRecurrentModel
 
 @MODEL_REGISTRY.register()
 class VideoRecurrentGANModel(VideoRecurrentModel):
+
+    def __init__(self, opt):
+        super(VideoRecurrentGANModel, self).__init__(opt)
+        self.accelerator = Accelerator()
 
     def init_training_settings(self):
         train_opt = self.opt['train']

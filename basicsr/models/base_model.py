@@ -3,7 +3,7 @@ import time
 import torch
 from collections import OrderedDict
 from copy import deepcopy
-from torch.nn.parallel import DataParallel, DistributedDataParallel
+from accelerate import Accelerator
 
 from basicsr.models import lr_scheduler as lr_scheduler
 from basicsr.utils import get_root_logger
@@ -19,6 +19,7 @@ class BaseModel():
         self.is_train = opt['is_train']
         self.schedulers = []
         self.optimizers = []
+        self.accelerator = Accelerator()
 
     def feed_data(self, data):
         pass
@@ -85,19 +86,13 @@ class BaseModel():
         return self.log_dict
 
     def model_to_device(self, net):
-        """Model to device. It also warps models with DistributedDataParallel
-        or DataParallel.
+        """Model to device. It also warps models with accelerate's Accelerator.
 
         Args:
             net (nn.Module)
         """
         net = net.to(self.device)
-        if self.opt['dist']:
-            find_unused_parameters = self.opt.get('find_unused_parameters', False)
-            net = DistributedDataParallel(
-                net, device_ids=[torch.cuda.current_device()], find_unused_parameters=find_unused_parameters)
-        elif self.opt['num_gpu'] > 1:
-            net = DataParallel(net)
+        net = self.accelerator.prepare(net)
         return net
 
     def get_optimizer(self, optim_type, params, lr, **kwargs):
@@ -134,9 +129,9 @@ class BaseModel():
 
     def get_bare_model(self, net):
         """Get bare model, especially under wrapping with
-        DistributedDataParallel or DataParallel.
+        accelerate's Accelerator.
         """
-        if isinstance(net, (DataParallel, DistributedDataParallel)):
+        if isinstance(net, self.accelerator.Accelerator):
             net = net.module
         return net
 
@@ -147,7 +142,7 @@ class BaseModel():
         Args:
             net (nn.Module)
         """
-        if isinstance(net, (DataParallel, DistributedDataParallel)):
+        if isinstance(net, self.accelerator.Accelerator):
             net_cls_str = f'{net.__class__.__name__} - {net.module.__class__.__name__}'
         else:
             net_cls_str = f'{net.__class__.__name__}'
@@ -380,7 +375,7 @@ class BaseModel():
                     keys.append(name)
                     losses.append(value)
                 losses = torch.stack(losses, 0)
-                torch.distributed.reduce(losses, dst=0)
+                self.accelerator.reduce(losses)
                 if self.opt['rank'] == 0:
                     losses /= self.opt['world_size']
                 loss_dict = {key: loss for key, loss in zip(keys, losses)}

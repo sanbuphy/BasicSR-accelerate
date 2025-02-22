@@ -1,8 +1,8 @@
 import torch
 from collections import Counter
 from os import path as osp
-from torch import distributed as dist
 from tqdm import tqdm
+from accelerate import Accelerator
 
 from basicsr.metrics import calculate_metric
 from basicsr.utils import get_root_logger, imwrite, tensor2img
@@ -14,6 +14,10 @@ from .sr_model import SRModel
 @MODEL_REGISTRY.register()
 class VideoBaseModel(SRModel):
     """Base video SR model."""
+
+    def __init__(self, opt):
+        super(VideoBaseModel, self).__init__(opt)
+        self.accelerator = Accelerator()
 
     def dist_validation(self, dataloader, current_iter, tb_logger, save_img):
         dataset = dataloader.dataset

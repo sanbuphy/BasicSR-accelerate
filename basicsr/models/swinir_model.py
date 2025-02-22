@@ -1,5 +1,6 @@
 import torch
 from torch.nn import functional as F
+from accelerate import Accelerator
 
 from basicsr.utils.registry import MODEL_REGISTRY
 from .sr_model import SRModel
@@ -7,6 +8,10 @@ from .sr_model import SRModel
 
 @MODEL_REGISTRY.register()
 class SwinIRModel(SRModel):
+
+    def __init__(self, opt):
+        super(SwinIRModel, self).__init__(opt)
+        self.accelerator = Accelerator()
 
     def test(self):
         # pad to multiplication of window_size

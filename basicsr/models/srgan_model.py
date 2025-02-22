@@ -1,5 +1,6 @@
 import torch
 from collections import OrderedDict
+from accelerate import Accelerator
 
 from basicsr.archs import build_network
 from basicsr.losses import build_loss
@@ -11,6 +12,10 @@ from .sr_model import SRModel
 @MODEL_REGISTRY.register()
 class SRGANModel(SRModel):
     """SRGAN model for single image super-resolution."""
+
+    def __init__(self, opt):
+        super(SRGANModel, self).__init__(opt)
+        self.accelerator = Accelerator()
 
     def init_training_settings(self):
         train_opt = self.opt['train']

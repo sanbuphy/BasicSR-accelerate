@@ -4,6 +4,7 @@ import math
 import time
 import torch
 from os import path as osp
+from accelerate import Accelerator
 
 from basicsr.data import build_dataloader, build_dataset
 from basicsr.data.data_sampler import EnlargedSampler
@@ -96,6 +97,11 @@ def train_pipeline(root_path):
     torch.backends.cudnn.benchmark = True
     # torch.backends.cudnn.deterministic = True
 
+    # Initialize accelerator
+    accelerator = Accelerator()
+    opt['rank'] = accelerator.process_index
+    opt['world_size'] = accelerator.num_processes
+
     # load resume states if necessary
     resume_state = load_resume_state(opt)
     # mkdir for experiments and logger
@@ -122,6 +128,10 @@ def train_pipeline(root_path):
 
     # create model
     model = build_model(opt)
+    model = accelerator.prepare(model)
+    train_loader = accelerator.prepare(train_loader)
+    val_loaders = [accelerator.prepare(val_loader) for val_loader in val_loaders]
+
     if resume_state:  # resume training
         model.resume_training(resume_state)  # handle optimizers and schedulers
         logger.info(f"Resuming training from epoch: {resume_state['epoch']}, iter: {resume_state['iter']}.")

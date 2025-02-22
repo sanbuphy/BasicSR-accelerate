@@ -5,6 +5,7 @@ import random
 import torch
 from collections import OrderedDict
 from os import path as osp
+from accelerate import Accelerator
 
 from basicsr.archs import build_network
 from basicsr.losses import build_loss
@@ -20,6 +21,7 @@ class StyleGAN2Model(BaseModel):
 
     def __init__(self, opt):
         super(StyleGAN2Model, self).__init__(opt)
+        self.accelerator = Accelerator()
 
         # define network net_g
         self.net_g = build_network(opt['network_g'])
