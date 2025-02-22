@@ -2,6 +2,7 @@ import torch
 from collections import OrderedDict
 from os import path as osp
 from tqdm import tqdm
+from accelerate import Accelerator
 
 from basicsr.archs import build_network
 from basicsr.losses import build_loss
@@ -17,6 +18,7 @@ class SRModel(BaseModel):
 
     def __init__(self, opt):
         super(SRModel, self).__init__(opt)
+        self.accelerator = Accelerator()
 
         # define network
         self.net_g = build_network(opt['network_g'])

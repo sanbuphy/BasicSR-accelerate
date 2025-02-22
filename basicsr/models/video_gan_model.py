@@ -1,3 +1,4 @@
+from accelerate import Accelerator
 from basicsr.utils.registry import MODEL_REGISTRY
 from .srgan_model import SRGANModel
 from .video_base_model import VideoBaseModel
@@ -17,3 +18,6 @@ class VideoGANModel(SRGANModel, VideoBaseModel):
 
     Then find functions in :class:`VideoBaseModel`.
     """
+    def __init__(self, opt):
+        super(VideoGANModel, self).__init__(opt)
+        self.accelerator = Accelerator()

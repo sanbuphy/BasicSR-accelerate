@@ -2,6 +2,7 @@ import numpy as np
 import random
 import torch
 from torch.nn import functional as F
+from accelerate import Accelerator
 
 from basicsr.data.degradations import random_add_gaussian_noise_pt, random_add_poisson_noise_pt
 from basicsr.data.transforms import paired_random_crop
@@ -26,6 +27,7 @@ class RealESRNetModel(SRModel):
         self.jpeger = DiffJPEG(differentiable=False).cuda()  # simulate JPEG compression artifacts
         self.usm_sharpener = USMSharp().cuda()  # do usm sharpening
         self.queue_size = opt.get('queue_size', 180)
+        self.accelerator = Accelerator()
 
     @torch.no_grad()
     def _dequeue_and_enqueue(self):

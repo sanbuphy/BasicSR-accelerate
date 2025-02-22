@@ -2,6 +2,7 @@ import torch
 from collections import OrderedDict
 from os import path as osp
 from tqdm import tqdm
+from accelerate import Accelerator
 
 from basicsr.archs import build_network
 from basicsr.losses import build_loss
@@ -17,6 +18,10 @@ class HiFaceGANModel(SRModel):
     No prior modeling required, works for any degradations.
     Currently doesn't support EMA for inference.
     """
+
+    def __init__(self, opt):
+        super(HiFaceGANModel, self).__init__(opt)
+        self.accelerator = Accelerator()
 
     def init_training_settings(self):
 
