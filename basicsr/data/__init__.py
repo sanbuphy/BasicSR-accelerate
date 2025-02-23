@@ -9,7 +9,6 @@ from os import path as osp
 
 from basicsr.data.prefetch_dataloader import PrefetchDataLoader
 from basicsr.utils import get_root_logger, scandir
-from basicsr.utils.dist_util import get_dist_info
 from basicsr.utils.registry import DATASET_REGISTRY
 
 __all__ = ['build_dataset', 'build_dataloader']
@@ -37,7 +36,7 @@ def build_dataset(dataset_opt):
     return dataset
 
 
-def build_dataloader(dataset, dataset_opt, num_gpu=1, dist=False, sampler=None, seed=None):
+def build_dataloader(dataset, dataset_opt, num_gpu=1, sampler=None, seed=None):
     """Build dataloader.
 
     Args:
@@ -48,21 +47,13 @@ def build_dataloader(dataset, dataset_opt, num_gpu=1, dist=False, sampler=None, 
             batch_size_per_gpu (int): Training batch size for each GPU.
         num_gpu (int): Number of GPUs. Used only in the train phase.
             Default: 1.
-        dist (bool): Whether in distributed training. Used only in the train
-            phase. Default: False.
         sampler (torch.utils.data.sampler): Data sampler. Default: None.
         seed (int | None): Seed. Default: None
     """
     phase = dataset_opt['phase']
-    rank, _ = get_dist_info()
     if phase == 'train':
-        if dist:  # distributed training
-            batch_size = dataset_opt['batch_size_per_gpu']
-            num_workers = dataset_opt['num_worker_per_gpu']
-        else:  # non-distributed training
-            multiplier = 1 if num_gpu == 0 else num_gpu
-            batch_size = dataset_opt['batch_size_per_gpu'] * multiplier
-            num_workers = dataset_opt['num_worker_per_gpu'] * multiplier
+        batch_size = dataset_opt['batch_size_per_gpu'] * num_gpu
+        num_workers = dataset_opt['num_worker_per_gpu'] * num_gpu
         dataloader_args = dict(
             dataset=dataset,
             batch_size=batch_size,
@@ -73,7 +64,7 @@ def build_dataloader(dataset, dataset_opt, num_gpu=1, dist=False, sampler=None, 
         if sampler is None:
             dataloader_args['shuffle'] = True
         dataloader_args['worker_init_fn'] = partial(
-            worker_init_fn, num_workers=num_workers, rank=rank, seed=seed) if seed is not None else None
+            worker_init_fn, num_workers=num_workers, seed=seed) if seed is not None else None
     elif phase in ['val', 'test']:  # validation
         dataloader_args = dict(dataset=dataset, batch_size=1, shuffle=False, num_workers=0)
     else:
@@ -94,8 +85,8 @@ def build_dataloader(dataset, dataset_opt, num_gpu=1, dist=False, sampler=None, 
         return torch.utils.data.DataLoader(**dataloader_args)
 
 
-def worker_init_fn(worker_id, num_workers, rank, seed):
-    # Set the worker seed to num_workers * rank + worker_id + seed
-    worker_seed = num_workers * rank + worker_id + seed
+def worker_init_fn(worker_id, num_workers, seed):
+    # Set the worker seed to num_workers * worker_id + seed
+    worker_seed = num_workers * worker_id + seed
     np.random.seed(worker_seed)
     random.seed(worker_seed)

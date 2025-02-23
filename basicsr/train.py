@@ -7,7 +7,6 @@ from os import path as osp
 from accelerate import Accelerator
 
 from basicsr.data import build_dataloader, build_dataset
-from basicsr.data.data_sampler import EnlargedSampler
 from basicsr.data.prefetch_dataloader import CPUPrefetcher, CUDAPrefetcher
 from basicsr.models import build_model
 from basicsr.utils import (AvgTimer, MessageLogger, check_resume, get_env_info, get_root_logger, get_time_str,
@@ -34,13 +33,11 @@ def create_train_val_dataloader(opt, logger):
         if phase == 'train':
             dataset_enlarge_ratio = dataset_opt.get('dataset_enlarge_ratio', 1)
             train_set = build_dataset(dataset_opt)
-            train_sampler = EnlargedSampler(train_set, opt['world_size'], opt['rank'], dataset_enlarge_ratio)
             train_loader = build_dataloader(
                 train_set,
                 dataset_opt,
                 num_gpu=opt['num_gpu'],
-                dist=opt['dist'],
-                sampler=train_sampler,
+                sampler=None,
                 seed=opt['manual_seed'])
 
             num_iter_per_epoch = math.ceil(
@@ -57,13 +54,13 @@ def create_train_val_dataloader(opt, logger):
         elif phase.split('_')[0] == 'val':
             val_set = build_dataset(dataset_opt)
             val_loader = build_dataloader(
-                val_set, dataset_opt, num_gpu=opt['num_gpu'], dist=opt['dist'], sampler=None, seed=opt['manual_seed'])
+                val_set, dataset_opt, num_gpu=opt['num_gpu'], sampler=None, seed=opt['manual_seed'])
             logger.info(f'Number of val images/folders in {dataset_opt["name"]}: {len(val_set)}')
             val_loaders.append(val_loader)
         else:
             raise ValueError(f'Dataset phase {phase} is not recognized.')
 
-    return train_loader, train_sampler, val_loaders, total_epochs, total_iters
+    return train_loader, val_loaders, total_epochs, total_iters
 
 
 def load_resume_state(opt):
@@ -124,7 +121,7 @@ def train_pipeline(root_path):
 
     # create train and validation dataloaders
     result = create_train_val_dataloader(opt, logger)
-    train_loader, train_sampler, val_loaders, total_epochs, total_iters = result
+    train_loader, val_loaders, total_epochs, total_iters = result
 
     # create model
     model = build_model(opt)
@@ -162,7 +159,6 @@ def train_pipeline(root_path):
     start_time = time.time()
 
     for epoch in range(start_epoch, total_epochs + 1):
-        train_sampler.set_epoch(epoch)
         prefetcher.reset()
         train_data = prefetcher.next()
 

@@ -7,7 +7,6 @@ from accelerate import Accelerator
 
 from basicsr.models import lr_scheduler as lr_scheduler
 from basicsr.utils import get_root_logger
-from basicsr.utils.dist_util import master_only
 
 
 class BaseModel():
@@ -162,7 +161,7 @@ class BaseModel():
             lr_groups_l (list): List for lr_groups, each for an optimizer.
         """
         for optimizer, lr_groups in zip(self.optimizers, lr_groups_l):
-            for param_group, lr in zip(optimizer.param_groups, lr_groups):
+            for param_group, lr in zip(optimizer.param_groups, lr):
                 param_group['lr'] = lr
 
     def _get_init_lr(self):
