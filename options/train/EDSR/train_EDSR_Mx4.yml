@@ -80,6 +80,8 @@ train:
     loss_weight: 1.0
     reduction: mean
 
+  accelerate: true
+
 # validation settings
 val:
   val_freq: !!float 5e3
@@ -99,8 +101,3 @@ logger:
   wandb:
     project: ~
     resume_id: ~
-
-# dist training settings
-dist_params:
-  backend: nccl
-  port: 29500
